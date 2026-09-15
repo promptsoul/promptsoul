@@ -1,41 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nimbus Test</title>
+  <title>PromptSoul</title>
 
   <style>
     body {
       margin: 0;
-      min-height: 100vh;
-      background: #09090b;
-      color: white;
       font-family: Arial, sans-serif;
-      display: grid;
-      place-items: center;
+      background: #0f172a;
+      color: white;
+      text-align: center;
     }
 
-    .box {
-      text-align: center;
-      padding: 40px;
-      border: 1px solid #27272a;
-      border-radius: 16px;
-      background: #111113;
+    header {
+      padding: 25px;
+      background: #111827;
     }
 
     h1 {
       color: #22c55e;
+      font-size: 40px;
+    }
+
+    p {
+      color: #cbd5e1;
+      font-size: 18px;
+    }
+
+    .box {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 30px;
+      background: #1e293b;
+      border-radius: 15px;
+    }
+
+    button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      background: #22c55e;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    footer {
+      margin-top: 80px;
+      padding: 20px;
+      color: #64748b;
     }
   </style>
 </head>
 
 <body>
 
+  <header>
+    <h1>PromptSoul</h1>
+    <p>Welcome to my website</p>
+  </header>
+
   <div class="box">
-    <h1>Nimbus is working ✓</h1>
-    <p>GitHub Pages is successfully loading index.html.</p>
+    <h2>Hello 👋</h2>
+
+    <p>
+      This is my first GitHub Pages website.
+    </p>
+
+    <button onclick="alert('Welcome to PromptSoul!')">
+      Click Me
+    </button>
   </div>
+
+  <footer>
+    © 2026 PromptSoul
+  </footer>
 
 </body>
 </html>
