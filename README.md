@@ -1,474 +1,643 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import {
-  Search, Bell, Plus, ChevronDown, Star, GitFork, Circle, Dot,
-  GitBranch, Code2, BookOpen, History, AlertCircle, GitPullRequest,
-  PlayCircle, Package, Lock, Globe, ChevronRight, X, Command,
-  Settings, LogOut, User, Users, MapPin, Link as LinkIcon, Calendar,
-  Copy, Check, Menu, TrendingUp, Activity, Folder, File, ChevronLeft,
-  Clock, MessageSquare, GitCommit, ArrowUpRight, Sparkles, Terminal,
-} from "lucide-react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nimbus</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 
-/* ----------------------------------------------------------------------
-   Design tokens (see component-level <style> for animation primitives)
-   Base:      zinc-950 / zinc-900 / zinc-800 borders
-   Signature: violet-500 -> teal-400 duotone (logo, primary actions, graph)
-   Text:      zinc-100 primary, zinc-400 secondary, zinc-600 tertiary
--------------------------------------------------------------------------*/
+<style>
+html{scroll-behavior:smooth}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:scale(1)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,30px) scale(1.08)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-30px,20px) scale(1.06)}}
+@keyframes growBar{from{width:0}to{width:var(--w)}}
+.animate-fadeup{animation:fadeUp .5s ease both}
+.animate-fadein{animation:fadeIn .4s ease both}
+.animate-scalein{animation:scaleIn .2s ease both}
+.animate-pop{animation:popIn .3s cubic-bezier(.2,.8,.2,1) both}
+.animate-toast{animation:toastIn .3s ease both}
+.drift{animation:drift 10s ease-in-out infinite}
+.drift2{animation:drift2 12s ease-in-out infinite}
+.grow-bar{animation:growBar 1s ease both}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#09090b}
+::-webkit-scrollbar-thumb{background:#27272a;border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:#3f3f46}
+</style>
+</head>
 
-const LANG_COLORS = {
-  TypeScript: "bg-blue-400",
-  JavaScript: "bg-yellow-400",
-  Rust: "bg-orange-500",
-  Go: "bg-cyan-400",
-  Python: "bg-emerald-400",
-  Swift: "bg-orange-400",
-  CSS: "bg-fuchsia-400",
-};
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
 
-const REPOS = [
-  { id: 1, name: "aurora-runtime", desc: "A lightweight, edge-first runtime for streaming server components.", lang: "TypeScript", stars: "4.2k", forks: 312, issues: 18, updated: "2 hours ago", visibility: "public", pinned: true },
-  { id: 2, name: "quill-cli", desc: "Ergonomic command-line scaffolding for monorepos and design systems.", lang: "Rust", stars: "1.8k", forks: 94, issues: 6, updated: "yesterday", visibility: "public", pinned: true },
-  { id: 3, name: "lumen-design", desc: "The internal component library and motion primitives for Lumen products.", lang: "TypeScript", stars: "926", forks: 58, issues: 11, updated: "3 days ago", visibility: "private", pinned: true },
-  { id: 4, name: "tidepool", desc: "Distributed job queue with exactly-once semantics, built on Go.", lang: "Go", stars: "3.1k", forks: 201, issues: 27, updated: "5 days ago", visibility: "public", pinned: false },
-  { id: 5, name: "glyph-render", desc: "GPU-accelerated text shaping and layout engine.", lang: "Rust", stars: "612", forks: 33, issues: 4, updated: "1 week ago", visibility: "public", pinned: false },
-  { id: 6, name: "orchard", desc: "Declarative infra provisioning with drift detection built in.", lang: "Python", stars: "2.4k", forks: 145, issues: 9, updated: "2 weeks ago", visibility: "public", pinned: false },
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+  <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-violet-600/10 blur-3xl drift"></div>
+  <div class="absolute top-1/3 -right-40 w-[28rem] h-[28rem] rounded-full bg-teal-500/5 blur-3xl drift2"></div>
+</div>
+
+<header class="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <button onclick="navigate('dashboard')" class="flex items-center gap-2.5 group">
+        <div class="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-teal-300 flex items-center justify-center shadow-lg shadow-violet-500/10">
+          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white">
+            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="font-semibold tracking-tight">Nimbus</span>
+      </button>
+
+      <nav id="navLinks" class="hidden md:flex items-center gap-1"></nav>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="openCommand()" class="hidden sm:flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 transition">
+        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+        <span>Search</span>
+        <kbd class="ml-3 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+      </button>
+
+      <button onclick="openCommand()" class="sm:hidden p-2 text-zinc-400 hover:text-zinc-100">
+        <i data-lucide="search" class="w-4 h-4"></i>
+      </button>
+
+      <div class="relative">
+        <button id="bellBtn" onclick="togglePanel('notifications')" class="p-2 text-zinc-400 hover:text-zinc-100 rounded-md hover:bg-zinc-800/70 transition relative">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+          <span class="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-violet-400"></span>
+        </button>
+        <div id="notifications" class="hidden absolute right-0 top-11 w-80 sm:w-96 rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/40 overflow-hidden animate-scalein"></div>
+      </div>
+
+      <div class="relative">
+        <button onclick="togglePanel('profileMenu')" class="flex items-center gap-2 p-1 rounded-lg hover:bg-zinc-800/70 transition">
+          <div class="h-7 w-7 rounded-full bg-gradient-to-br from-violet-500 to-teal-300 flex items-center justify-center text-[10px] font-bold text-zinc-950">JI</div>
+          <i data-lucide="chevron-down" class="hidden sm:block w-3.5 h-3.5 text-zinc-500"></i>
+        </button>
+        <div id="profileMenu" class="hidden absolute right-0 top-10 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/40 overflow-hidden animate-scalein"></div>
+      </div>
+
+      <button onclick="toggleMobile()" class="md:hidden p-2 text-zinc-400 hover:text-zinc-100">
+        <i data-lucide="menu" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobileNav" class="hidden md:hidden border-t border-zinc-800/80 px-4 py-2 flex-col gap-1"></div>
+</header>
+
+<main id="app" class="relative z-10"></main>
+
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm shadow-2xl animate-toast">
+  <div class="flex items-center gap-2">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-teal-400"></i>
+    <span id="toastText"></span>
+  </div>
+</div>
+
+<div id="commandModal" class="hidden fixed inset-0 z-50 items-start justify-center pt-[12vh] bg-black/60 backdrop-blur-sm">
+  <div class="w-[min(640px,calc(100%-2rem))] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden animate-scalein">
+    <div class="flex items-center gap-3 px-4 border-b border-zinc-800">
+      <i data-lucide="search" class="w-4 h-4 text-zinc-500"></i>
+      <input id="commandInput" oninput="renderCommand()" placeholder="Search repositories, people, commands..." class="w-full bg-transparent py-4 outline-none text-sm">
+      <kbd class="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500">ESC</kbd>
+    </div>
+    <div id="commandResults" class="max-h-80 overflow-auto py-2"></div>
+    <div class="border-t border-zinc-800 px-4 py-2 text-[11px] text-zinc-600 flex justify-between">
+      <span>Navigate with your keyboard</span>
+      <span>Enter to select</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const REPOS=[
+  {
+    id:1,
+    name:"aurora-runtime",
+    desc:"High-performance runtime primitives for edge applications.",
+    lang:"TypeScript",
+    stars:2840,
+    forks:318,
+    issues:12,
+    visibility:"public",
+    pinned:true,
+    updated:"2 hours ago"
+  },
+  {
+    id:2,
+    name:"nebula-cli",
+    desc:"A fast, composable CLI for modern cloud workflows.",
+    lang:"Rust",
+    stars:1732,
+    forks:141,
+    issues:7,
+    visibility:"public",
+    pinned:true,
+    updated:"5 hours ago"
+  },
+  {
+    id:3,
+    name:"vector-store",
+    desc:"Embedded vector storage with predictable latency.",
+    lang:"Go",
+    stars:921,
+    forks:83,
+    issues:5,
+    visibility:"private",
+    pinned:true,
+    updated:"1 day ago"
+  },
+  {
+    id:4,
+    name:"infra-modules",
+    desc:"Reusable infrastructure modules for production systems.",
+    lang:"HCL",
+    stars:412,
+    forks:39,
+    issues:3,
+    visibility:"public",
+    pinned:false,
+    updated:"2 days ago"
+  },
+  {
+    id:5,
+    name:"observability-kit",
+    desc:"Opinionated observability primitives for distributed systems.",
+    lang:"TypeScript",
+    stars:768,
+    forks:72,
+    issues:8,
+    visibility:"public",
+    pinned:false,
+    updated:"3 days ago"
+  },
+  {
+    id:6,
+    name:"scheduler",
+    desc:"Priority-aware task scheduler for concurrent workloads.",
+    lang:"Python",
+    stars:621,
+    forks:54,
+    issues:4,
+    visibility:"private",
+    pinned:false,
+    updated:"4 days ago"
+  }
 ];
 
-const TRENDING = [
-  { name: "vercel/turborepo", lang: "Rust", stars: "1.2k today" },
-  { name: "shadcn/ui", lang: "TypeScript", stars: "980 today" },
-  { name: "astral-sh/ruff", lang: "Rust", stars: "740 today" },
+const TRENDING=[
+  {name:"shadcn/ui",lang:"TypeScript",stars:"42.8k"},
+  {name:"bun",lang:"Zig",stars:"78.4k"},
+  {name:"astro",lang:"TypeScript",stars:"49.2k"},
+  {name:"ruff",lang:"Rust",stars:"41.1k"},
+  {name:"turso",lang:"Rust",stars:"15.7k"}
 ];
 
-const ACTIVITY = [
-  { icon: GitCommit, text: "Pushed 3 commits to", target: "aurora-runtime", branch: "feat/edge-cache", time: "24m ago" },
-  { icon: GitPullRequest, text: "Opened a pull request in", target: "quill-cli", branch: "#218", time: "2h ago" },
-  { icon: Star, text: "Starred", target: "astral-sh/ruff", branch: null, time: "6h ago" },
-  { icon: AlertCircle, text: "Closed an issue in", target: "tidepool", branch: "#94", time: "yesterday" },
-  { icon: GitFork, text: "Forked", target: "shadcn/ui", branch: null, time: "2 days ago" },
+const ACTIVITY=[
+  {icon:"git-commit-horizontal",text:"pushed to",target:"aurora-runtime",branch:"main",time:"12 minutes ago"},
+  {icon:"git-pull-request",text:"opened pull request in",target:"nebula-cli",branch:"#216",time:"1 hour ago"},
+  {icon:"circle-alert",text:"opened issue in",target:"vector-store",branch:"#94",time:"2 hours ago"},
+  {icon:"star",text:"starred",target:"shadcn/ui",time:"4 hours ago"},
+  {icon:"git-merge",text:"merged pull request in",target:"aurora-runtime",branch:"#208",time:"Yesterday"},
+  {icon:"git-branch",text:"created branch in",target:"scheduler",branch:"perf/priority-queue",time:"Yesterday"}
 ];
 
-const NOTIFICATIONS = [
-  { id: 1, unread: true, type: "pr", title: "Review requested on quill-cli", detail: "maya-lin wants your review on #218", time: "12m" },
-  { id: 2, unread: true, type: "issue", title: "New issue in aurora-runtime", detail: "Memory leak in edge cache invalidation", time: "1h" },
-  { id: 3, unread: false, type: "mention", title: "You were mentioned", detail: "@you can you take a look at this?", time: "5h" },
-  { id: 4, unread: false, type: "pr", title: "Pull request merged", detail: "feat/streaming-ssr was merged into main", time: "1d" },
+const NOTIFICATIONS=[
+  {
+    type:"git-pull-request",
+    title:"maya-lin requested your review",
+    detail:"feat: streaming SSR for edge handlers",
+    time:"12m",
+    unread:true
+  },
+  {
+    type:"circle-alert",
+    title:"New issue assigned to you",
+    detail:"Docs: clarify TTL default for cache.set",
+    time:"2h",
+    unread:true
+  },
+  {
+    type:"at-sign",
+    title:"devon-park mentioned you",
+    detail:"in aurora-runtime#211",
+    time:"5h",
+    unread:false
+  },
+  {
+    type:"git-merge",
+    title:"Pull request merged",
+    detail:"fix: race condition in scheduler.run",
+    time:"Yesterday",
+    unread:false
+  }
 ];
 
-const FILE_TREE = [
-  { type: "folder", name: "src", children: [
-    { type: "folder", name: "runtime", children: [
-      { type: "file", name: "scheduler.ts" },
-      { type: "file", name: "cache.ts" },
-    ]},
-    { type: "file", name: "index.ts" },
-    { type: "file", name: "server.ts" },
-  ]},
-  { type: "folder", name: "examples", children: [
-    { type: "file", name: "edge.ts" },
-  ]},
-  { type: "file", name: "package.json" },
-  { type: "file", name: "README.md" },
+const FILE_TREE=[
+  {
+    name:"src",
+    type:"folder",
+    children:[
+      {name:"index.ts",type:"file"},
+      {name:"scheduler.ts",type:"file"},
+      {name:"cache.ts",type:"file"},
+      {name:"runtime.ts",type:"file"}
+    ]
+  },
+  {
+    name:"tests",
+    type:"folder",
+    children:[
+      {name:"runtime.test.ts",type:"file"},
+      {name:"scheduler.test.ts",type:"file"}
+    ]
+  },
+  {name:"package.json",type:"file"},
+  {name:"README.md",type:"file"},
+  {name:"tsconfig.json",type:"file"}
 ];
 
-const CODE_SAMPLES = {
-  "scheduler.ts": `import { Task, Priority } from "./types";
+const CODE={
+"index.ts":`import { Runtime } from "./runtime";
+import { Scheduler } from "./scheduler";
+import { Cache } from "./cache";
+
+export class Aurora {
+  private runtime: Runtime;
+  private scheduler: Scheduler;
+  private cache: Cache;
+
+  constructor() {
+    this.runtime = new Runtime();
+    this.scheduler = new Scheduler();
+    this.cache = new Cache();
+  }
+
+  async start() {
+    await this.runtime.initialize();
+    this.scheduler.start();
+    return this;
+  }
+
+  async shutdown() {
+    await this.scheduler.stop();
+    await this.runtime.close();
+  }
+}
+
+export default Aurora;`,
+
+"scheduler.ts":`import type { Task, Priority } from "./types";
 
 export class Scheduler {
   private queue: Task[] = [];
+  private running = false;
 
-  // Insert respecting priority, highest first
   enqueue(task: Task, priority: Priority = "normal") {
-    const weight = priority === "high" ? 0 : 1;
-    this.queue.splice(weight, 0, task);
-    return this.queue.length;
+    this.queue.push({ ...task, priority });
+    this.queue.sort((a, b) => b.priority - a.priority);
   }
 
-  async run() {
-    while (this.queue.length) {
+  async start() {
+    this.running = true;
+
+    while (this.running) {
       const task = this.queue.shift();
-      if (!task) continue;
-      await task.execute();
+
+      if (!task) {
+        await new Promise(r => setTimeout(r, 10));
+        continue;
+      }
+
+      await task.run();
     }
   }
-}`,
-  "cache.ts": `const store = new Map<string, { value: unknown; ttl: number }>();
 
-export function set(key: string, value: unknown, ttlMs = 60_000) {
-  store.set(key, { value, ttl: Date.now() + ttlMs });
+  async stop() {
+    this.running = false;
+  }
+}`,
+
+"cache.ts":`export interface CacheOptions {
+  ttl?: number;
+  maxSize?: number;
 }
 
-export function get(key: string) {
-  const entry = store.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.ttl) {
-    store.delete(key);
-    return null;
+export class Cache<T> {
+  private values = new Map<string, T>();
+
+  constructor(private options: CacheOptions = {}) {}
+
+  set(key: string, value: T) {
+    this.values.set(key, value);
+
+    if (this.options.maxSize &&
+        this.values.size > this.options.maxSize) {
+      const first = this.values.keys().next().value;
+      this.values.delete(first);
+    }
   }
-  return entry.value;
+
+  get(key: string) {
+    return this.values.get(key);
+  }
+
+  clear() {
+    this.values.clear();
+  }
 }`,
-  "index.ts": `export { Scheduler } from "./runtime/scheduler";
-export * as cache from "./runtime/cache";
 
-// Public entrypoint for the aurora runtime
-export const version = "2.4.0";`,
-  "server.ts": `import { createServer } from "node:http";
+"runtime.ts":`export class Runtime {
+  private initialized = false;
 
-const server = createServer((req, res) => {
-  res.writeHead(200, { "content-type": "text/plain" });
-  res.end("aurora runtime online");
-});
+  async initialize() {
+    if (this.initialized) return;
 
-server.listen(3000);`,
-  "edge.ts": `// Minimal edge handler example
-export default {
-  fetch(request: Request) {
-    return new Response("hello from the edge");
-  },
-};`,
-  "package.json": `{
+    await this.loadConfig();
+    await this.connect();
+
+    this.initialized = true;
+  }
+
+  private async loadConfig() {
+    // Load runtime configuration
+  }
+
+  private async connect() {
+    // Establish runtime connections
+  }
+
+  async close() {
+    this.initialized = false;
+  }
+}`,
+
+"runtime.test.ts":`import { Runtime } from "../src/runtime";
+
+describe("Runtime", () => {
+  it("initializes once", async () => {
+    const runtime = new Runtime();
+
+    await runtime.initialize();
+    await runtime.initialize();
+
+    expect(true).toBe(true);
+  });
+});`,
+
+"scheduler.test.ts":`import { Scheduler } from "../src/scheduler";
+
+describe("Scheduler", () => {
+  it("starts and stops", async () => {
+    const scheduler = new Scheduler();
+
+    scheduler.start();
+    await scheduler.stop();
+
+    expect(true).toBe(true);
+  });
+});`,
+
+"package.json":`{
   "name": "aurora-runtime",
   "version": "2.4.0",
-  "license": "MIT",
-  "type": "module"
+  "private": false,
+  "scripts": {
+    "test": "vitest",
+    "build": "tsc",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "typescript": "^5.6.0"
+  }
 }`,
-  "README.md": `# aurora-runtime
 
-A lightweight, edge-first runtime for streaming server components.
+"README.md":`# Aurora Runtime
 
-## Install
+High-performance runtime primitives
+for edge applications.
 
-npm install aurora-runtime`,
+## Installation
+
+npm install aurora-runtime
+
+## Usage
+
+import Aurora from "aurora-runtime";
+
+const app = await new Aurora().start();
+
+await app.shutdown();`,
+
+"tsconfig.json":`{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "strict": true,
+    "declaration": true,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"]
+}`
 };
 
-function highlight(line) {
-  const escaped = line
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const tokens = [
-    { re: /(\/\/.*$)/g, cls: "text-zinc-500" },
-    { re: /(".*?"|`.*?`)/g, cls: "text-teal-300" },
-    { re: /\b(import|export|from|const|let|class|async|await|return|new|while|if|continue|default|function|extends|private|public)\b/g, cls: "text-violet-400" },
-    { re: /\b(string|number|unknown|void|Request|Response|Task|Priority)\b/g, cls: "text-blue-300" },
-    { re: /\b(\d+_?\d*)\b/g, cls: "text-amber-300" },
-  ];
-  let result = escaped;
-  tokens.forEach(({ re, cls }) => {
-    result = result.replace(re, (m) => `§${cls}§${m}§`);
-  });
-  const parts = result.split("§");
-  const out = [];
-  for (let i = 0; i < parts.length; i++) {
-    if (i % 3 === 0) {
-      if (parts[i]) out.push(<span key={i}>{parts[i]}</span>);
-    } else if (i % 3 === 1) {
-      const cls = parts[i];
-      const text = parts[i + 1];
-      out.push(<span key={i} className={cls}>{text}</span>);
-      i++;
-    }
+const LANG_COLORS={
+  TypeScript:"#3178c6",
+  Rust:"#dea584",
+  Go:"#00add8",
+  Python:"#3572A5",
+  Shell:"#89e051",
+  Dockerfile:"#384d54"
+};
+
+function esc(s){
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
+}
+
+function icon(name,cls="w-4 h-4"){
+  return `<i data-lucide="${name}" class="${cls}"></i>`;
+}
+
+function badge(text,type="default"){
+  const styles={
+    default:"bg-zinc-800/70 text-zinc-400 border-zinc-700",
+    violet:"bg-violet-500/10 text-violet-300 border-violet-500/20",
+    teal:"bg-teal-500/10 text-teal-300 border-teal-500/20",
+    amber:"bg-amber-500/10 text-amber-300 border-amber-500/20"
+  };
+
+  return `<span class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] ${styles[type]||styles.default}">${text}</span>`;
+}
+
+function button(label,kind="outline",ico="",extra=""){
+  const styles={
+    outline:"border border-zinc-700 bg-zinc-900/60 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-600",
+    primary:"bg-zinc-100 text-zinc-950 hover:bg-white",
+    ghost:"text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70"
+  };
+
+  return `<button class="inline-flex items-center justify-center gap-1.5 font-medium rounded-lg text-xs px-2.5 py-1.5 transition ${styles[kind]} ${extra}">
+    ${ico?icon(ico,"w-3.5 h-3.5"):""}${label}
+  </button>`;
+}
+
+function avatar(name,size=32){
+  const initials=name==="jordan"?"JI":name.slice(0,2).toUpperCase();
+
+  return `<div style="width:${size}px;height:${size}px" class="rounded-full bg-gradient-to-br from-violet-500 to-teal-300 flex items-center justify-center text-[${Math.max(8,Math.round(size/3))}px] font-bold text-zinc-950 shrink-0">${initials}</div>`;
+}
+
+function card(r,i=0){
+  return `
+  <div onclick="openRepo(${r.id})"
+       class="group rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 hover:bg-zinc-900/70 hover:border-zinc-700 transition cursor-pointer animate-fadeup"
+       style="animation-delay:${i*60}ms">
+
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        ${icon("book-open","w-4 h-4 text-zinc-500 shrink-0")}
+        <h3 class="font-mono text-[13.5px] font-medium truncate group-hover:text-violet-300 transition">${r.name}</h3>
+      </div>
+
+      ${badge(r.visibility,r.visibility==="private"?"amber":"default")}
+    </div>
+
+    <p class="text-[12.5px] text-zinc-500 leading-relaxed mt-2.5 min-h-[38px]">${r.desc}</p>
+
+    <div class="flex items-center gap-4 mt-4 text-[11px] text-zinc-500">
+      <span class="flex items-center gap-1">
+        <span class="h-2 w-2 rounded-full" style="background:${LANG_COLORS[r.lang]||"#71717a"}"></span>
+        ${r.lang}
+      </span>
+
+      <span class="flex items-center gap-1">
+        ${icon("star","w-3 h-3")}
+        ${r.stars.toLocaleString()}
+      </span>
+
+      <span class="flex items-center gap-1">
+        ${icon("git-fork","w-3 h-3")}
+        ${r.forks}
+      </span>
+
+      <span class="ml-auto">${r.updated}</span>
+    </div>
+  </div>`;
+}
+
+function graph(){
+  let cells="";
+
+  for(let i=0;i<52*7;i++){
+    const v=Math.random();
+
+    let level=0;
+    if(v>.78) level=1;
+    if(v>.91) level=2;
+    if(v>.97) level=3;
+    if(v>.992) level=4;
+
+    const classes=[
+      "bg-zinc-800/70",
+      "bg-teal-900/70",
+      "bg-teal-700/80",
+      "bg-teal-500/90",
+      "bg-teal-300"
+    ];
+
+    cells+=`<span class="h-2.5 w-2.5 rounded-[3px] ${classes[level]} hover:ring-1 hover:ring-teal-300/50 transition"></span>`;
   }
-  return out;
-}
 
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const handler = () => setReduced(mq.matches);
-    mq.addEventListener?.("change", handler);
-    return () => mq.removeEventListener?.("change", handler);
-  }, []);
-  return reduced;
-}
+  let s="";
 
-/* ---------------------------------- UI atoms ---------------------------------- */
+  for(let week=0;week<52;week++){
+    s+=`<div class="grid grid-rows-7 gap-[3px]">${Array.from({length:7},(_,d)=>cells[(week*7+d)*65]).join("")}</div>`;
+  }
 
-function Avatar({ size = 32, seed = "you" }) {
-  const hue = useMemo(() => {
-    let h = 0;
-    for (const c of seed) h = (h * 31 + c.charCodeAt(0)) % 360;
-    return h;
-  }, [seed]);
-  return (
-    <div
-      className="rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0 ring-1 ring-white/10"
-      style={{
-        width: size,
-        height: size,
-        background: `linear-gradient(135deg, hsl(${hue} 70% 55%), hsl(${(hue + 60) % 360} 70% 45%))`,
-      }}
-    >
-      {seed.slice(0, 2).toUpperCase()}
+  return `
+  <div class="overflow-x-auto">
+    <div class="min-w-[720px]">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[11px] text-zinc-500">1,847 contributions in the last year</span>
+        <span class="text-[11px] text-zinc-600">Less ${[0,1,2,3,4].map(i=>`<span class="inline-block h-2.5 w-2.5 rounded-[3px] ml-1 ${["bg-zinc-800/70","bg-teal-900/70","bg-teal-700/80","bg-teal-500/90","bg-teal-300"][i]}"></span>`).join("")} More</span>
+      </div>
+
+      <div class="flex gap-[3px] overflow-x-auto pb-1">
+        ${s}
+      </div>
     </div>
-  );
+  </div>`;
 }
 
-function Badge({ children, tone = "default" }) {
-  const tones = {
-    default: "bg-zinc-800/80 text-zinc-300 border-zinc-700",
-    violet: "bg-violet-500/10 text-violet-300 border-violet-500/30",
-    teal: "bg-teal-500/10 text-teal-300 border-teal-500/30",
-    amber: "bg-amber-500/10 text-amber-300 border-amber-500/30",
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tones[tone]}`}>
-      {children}
-    </span>
-  );
-}
-
-function Button({ children, variant = "default", size = "md", className = "", icon: Icon, ...props }) {
-  const base = "relative inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all duration-200 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:opacity-50 disabled:pointer-events-none";
-  const variants = {
-    default: "bg-zinc-100 text-zinc-900 hover:bg-white shadow-sm shadow-black/20",
-    primary: "text-white bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 shadow-lg shadow-violet-900/40",
-    ghost: "bg-transparent text-zinc-300 hover:bg-zinc-800/70 hover:text-white",
-    outline: "bg-zinc-900/60 text-zinc-200 border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/60",
-  };
-  const sizes = {
-    sm: "text-xs px-2.5 py-1.5",
-    md: "text-sm px-3.5 py-2",
-    lg: "text-sm px-5 py-2.5",
-  };
-  return (
-    <button className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
-      {Icon && <Icon size={size === "sm" ? 13 : 15} strokeWidth={2.25} />}
-      {children}
+function renderNav(){
+  document.getElementById("navLinks").innerHTML=[
+    ["Overview","dashboard"],
+    ["Repositories","repos"],
+    ["Profile","profile"]
+  ].map(x=>`
+    <button onclick="navigate('${x[1]}')"
+      class="px-3 py-1.5 text-[13px] font-medium rounded-md ${state.view===x[1]?"text-zinc-100":"text-zinc-400 hover:text-zinc-100"}">
+      ${x[0]}
+      ${state.view===x[1]?'<span class="block h-[2px] mt-1 rounded-full bg-gradient-to-r from-violet-400 to-teal-300"></span>':""}
     </button>
-  );
+  `).join("");
 }
 
-function IconButton({ icon: Icon, className = "", active = false, ...props }) {
-  return (
-    <button
-      className={`relative h-9 w-9 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 ${active ? "text-zinc-100 bg-zinc-800/70" : ""} ${className}`}
-      {...props}
-    >
-      <Icon size={18} strokeWidth={2} />
-    </button>
-  );
-}
+function dashboard(){
+  const pinned=REPOS.filter(r=>r.pinned);
 
-function FadeUp({ children, delay = 0, className = "" }) {
-  return (
-    <div
-      className={`animate-[fadeUp_0.6s_cubic-bezier(0.16,1,0.3,1)_both] ${className}`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      {children}
+  return `
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-10">
+
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-fadeup">
+      <div>
+        <h1 class="text-2xl sm:text-[28px] font-semibold tracking-tight">Good afternoon, Jordan</h1>
+        <p class="text-zinc-500 text-sm mt-1">Here's what's happening across your work today.</p>
+      </div>
+
+      <div class="flex gap-2">
+        ${button("New branch","outline","git-branch")}
+        ${button("New repository","primary","plus")}
+      </div>
     </div>
-  );
-}
 
-/* ---------------------------------- Contribution graph ---------------------------------- */
-
-function useContributionData() {
-  return useMemo(() => {
-    const weeks = 26;
-    const days = 7;
-    const grid = [];
-    let seed = 42;
-    const rand = () => {
-      seed = (seed * 9301 + 49297) % 233280;
-      return seed / 233280;
-    };
-    for (let w = 0; w < weeks; w++) {
-      const col = [];
-      for (let d = 0; d < days; d++) {
-        const r = rand();
-        const level = r > 0.75 ? Math.ceil(r * 4) : r > 0.5 ? 1 : 0;
-        col.push({ level: Math.min(level, 4), count: Math.round(level * r * 8) });
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      ${
+        [
+          ["Repositories","28","book-open"],
+          ["Open pull requests","6","git-pull-request"],
+          ["Open issues","14","circle-alert"],
+          ["Followers","1,204","users"]
+        ].map((x,i)=>`
+          <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 animate-fadeup" style="animation-delay:${80+i*60}ms">
+            <div class="flex items-center justify-between">
+              ${icon(x[2],"w-4 h-4 text-zinc-500")}
+              ${icon("trending-up","w-3.5 h-3.5 text-teal-400")}
+            </div>
+            <p class="text-2xl font-semibold mt-2 tracking-tight">${x[1]}</p>
+            <p class="text-[12px] text-zinc-500 mt-0.5">${x[0]}</p>
+          </div>
+        `).join("")
       }
-      grid.push(col);
-    }
-    return grid;
-  }, []);
-}
-
-function ContributionGraph() {
-  const data = useContributionData();
-  const [hovered, setHovered] = useState(null);
-  const levelColor = [
-    "bg-zinc-800/70",
-    "bg-teal-900/70",
-    "bg-teal-700/80",
-    "bg-teal-500/90",
-    "bg-teal-300",
-  ];
-  const total = data.flat().reduce((s, c) => s + c.count, 0);
-
-  return (
-    <div className="relative">
-      <div className="flex items-baseline justify-between mb-3">
-        <p className="text-sm text-zinc-400">
-          <span className="text-zinc-100 font-semibold">{total}</span> contributions in the last 6 months
-        </p>
-        <div className="hidden sm:flex items-center gap-1 text-[11px] text-zinc-500">
-          <span>Less</span>
-          {levelColor.map((c, i) => (
-            <span key={i} className={`h-2.5 w-2.5 rounded-[3px] ${c}`} />
-          ))}
-          <span>More</span>
-        </div>
-      </div>
-      <div className="flex gap-[3px] overflow-x-auto pb-1">
-        {data.map((col, wi) => (
-          <div key={wi} className="flex flex-col gap-[3px]">
-            {col.map((cell, di) => {
-              const isHovered = hovered && hovered.w === wi && hovered.d === di;
-              return (
-                <div
-                  key={di}
-                  onMouseEnter={() => setHovered({ w: wi, d: di, ...cell })}
-                  onMouseLeave={() => setHovered(null)}
-                  className={`h-2.5 w-2.5 rounded-[3px] ${levelColor[cell.level]} transition-transform duration-150 ease-out cursor-pointer ${isHovered ? "scale-[1.6] ring-1 ring-teal-200/60" : ""}`}
-                  style={{ animation: `popIn 0.4s cubic-bezier(0.16,1,0.3,1) both`, animationDelay: `${(wi * 7 + di) * 3}ms` }}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      {hovered && (
-        <div className="absolute -top-9 left-0 bg-zinc-800 text-zinc-100 text-xs px-2.5 py-1.5 rounded-md shadow-xl border border-zinc-700 animate-[fadeUp_0.15s_ease-out_both] pointer-events-none">
-          <span className="font-semibold">{hovered.count}</span> contributions
-        </div>
-      )}
     </div>
-  );
-}
 
-/* ---------------------------------- Repository card ---------------------------------- */
+    <div class="grid lg:grid-cols-3 gap-6">
 
-function RepositoryCard({ repo, onOpen, delay = 0 }) {
-  return (
-    <FadeUp delay={delay}>
-      <button
-        onClick={() => onOpen(repo)}
-        className="group w-full text-left rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 transition-all duration-300 ease-out hover:-translate-y-[3px] hover:border-violet-500/40 hover:shadow-[0_8px_30px_-10px_rgba(124,111,243,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <BookOpen size={15} className="text-zinc-500 shrink-0" />
-            <span className="font-mono text-[14px] text-violet-300 group-hover:text-violet-200 transition-colors truncate">
-              {repo.name}
-            </span>
+      <div class="lg:col-span-2 space-y-6">
+
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 animate-fadeup">
+          <div class="flex items-center gap-2 mb-4">
+            ${icon("activity","w-4 h-4 text-zinc-400")}
+            <h2 class="text-sm font-semibold text-zinc-200">Contribution activity</h2>
           </div>
-          <Badge tone={repo.visibility === "private" ? "amber" : "default"}>
-            {repo.visibility === "private" ? <Lock size={10} /> : <Globe size={10} />}
-            {repo.visibility}
-          </Badge>
+          ${graph()}
         </div>
-        <p className="mt-2 text-[13px] text-zinc-400 leading-relaxed line-clamp-2">{repo.desc}</p>
-        <div className="mt-4 flex items-center gap-4 text-[12px] text-zinc-500">
-          <span className="flex items-center gap-1.5">
-            <span className={`h-2.5 w-2.5 rounded-full ${LANG_COLORS[repo.lang] || "bg-zinc-500"}`} />
-            {repo.lang}
-          </span>
-          <span className="flex items-center gap-1"><Star size={12} /> {repo.stars}</span>
-          <span className="flex items-center gap-1"><GitFork size={12} /> {repo.forks}</span>
-          <span className="hidden sm:flex items-center gap-1"><AlertCircle size={12} /> {repo.issues}</span>
-          <span className="ml-auto text-zinc-600">{repo.updated}</span>
-        </div>
-      </button>
-    </FadeUp>
-  );
-}
-
-/* ---------------------------------- Command palette ---------------------------------- */
-
-function CommandPalette({ open, onClose }) {
-  const inputRef = useRef(null);
-  const [query, setQuery] = useState("");
-  const recent = ["aurora-runtime", "shadcn/ui", "maya-lin"];
-  const results = query
-    ? [...REPOS.filter((r) => r.name.includes(query.toLowerCase())), ...TRENDING.filter((t) => t.name.includes(query.toLowerCase()))]
-    : [];
-
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60);
-    else setQuery("");
-  }, [open]);
-
-  useEffect(() => {
-    const handler = (e) => e.key === "Escape" && onClose();
-    if (open) window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[12vh] px-4">
-      <div
-        className="absolute inset-0 bg-zinc-950/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out_both]"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-black/60 overflow-hidden animate-[scaleIn_0.22s_cubic-bezier(0.16,1,0.3,1)_both]">
-        <div className="flex items-center gap-3 px-4 border-b border-zinc-800">
-          <Search size={17} className="text-zinc-500 shrink-0" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search repositories, people, and more…"
-            className="w-full bg-transparent py-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none"
-          />
-          <kbd className="hidden sm:inline text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5">ESC</kbd>
-        </div>
-        <div className="max-h-80 overflow-y-auto py-2">
-          {!query && (
-            <div className="px-4 py-1.5 text-[11px] uppercase tracking-wide text-zinc-600">Recent</div>
-          )}
-          {!query &&
-            recent.map((r) => (
-              <button key={r} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800/70 transition-colors">
-                <Clock size={14} className="text-zinc-500" />
-                <span className="font-mono">{r}</span>
-              </button>
-            ))}
-          {query && results.length === 0 && (
-            <p className="px-4 py-6 text-sm text-zinc-500 text-center">No results for “{query}”</p>
-          )}
-          {query &&
-            results.map((r, i) => (
-              <button key={i} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800/70 transition-colors">
-                <BookOpen size={14} className="text-zinc-500" />
-                <span className="font-mono">{r.name}</span>
-              </button>
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------------------------- Notifications dropdown ---------------------------------- */
-
-function NotificationsPanel({ open, onClose }) {
-  const iconFor = { pr: GitPullRequest, issue: AlertCircle, mention: MessageSquare };
-  if (!open) return null;
-  return (
-    <div className="absolute right-0 top-11 w-[340px] max-w-[90vw] rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-black/60 overflow-hidden animate-[scaleIn_0.18s_cubic-bezier(0.16,1,0.3,1)_both] origin-top-right z-50">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-        <span className="text-sm font-semibold text-zinc-100">Notifications</span>
-        <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200">
-          <X size={15} />
-        </button>
-      </div>
-      <div className="max-h-96 overflow-y-auto">
-        {NOTIFICATIONS.map((n, i) => {
-          const Icon = iconFor[n.type];
-          return (
-            <div
-              key={n.id}
-              className="flex gap-3 px-4 py-3 border-b border-zinc-800/60 last:border-0 hover:bg-zinc-800/50 transition-colors cursor-pointer animate-[fadeUp_0.3s_ease-out_both]"
-              style={{ animationDelay: `${i * 40}ms` }}
-            >
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${n.unread ? "bg-violet-500/15 text-violet-300" : "bg-zinc-800 text-zinc-500"}`}>
-                <Icon size={14} />
-              </div>
-              <div className="min-w-0 fl
